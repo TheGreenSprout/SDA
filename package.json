@@ -1,16 +1,16 @@
 {
-    "name": "com.SproutingGames.Sprouts.DA",
-    "version": "3.4.3",
-    "displayName": "Sprouts.DA",
-    "description": "This is an example package",
-    "unity": "2019.1",
-    "dependencies": {
-      "https://github.com/GlitchEnzo/NuGetForUnity.git?path=/src/NuGetForUnity": "1.0.0",
-      "com.[company-name].other-package": "2.0.0"
-   },
-   "author": {
+  "name": "com.SproutingGames.Sprouts.DA",
+  "version": "3.4.3",
+  "displayName": "Sprouts.DA",
+  "description": "Helper tools for writing Unity documentation.",
+  "unity": "6000",
+  "dependencies": {
+    "com.github-glitchenzo.nugetforunity": "4.5.0",
+    "com.[company-name].other-package": "2.0.0"
+  },
+  "author": {
     "name": "TheGreenSprout",
     "email": "sprouting.games@gmail.com",
-    "url": "https://www.unity3d.com"
-   }
+    "url": "https://sprouts-garden.netlify.app"
   }
+}
