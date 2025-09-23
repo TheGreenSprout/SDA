@@ -1,0 +1,14 @@
+{
+    "name": "SproutingGames.Sprouts.DA.Editor",
+    "rootNamespace": "SDA",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
