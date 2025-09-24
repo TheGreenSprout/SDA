@@ -4,7 +4,7 @@
   "displayName": "Sprouts.DA",
   "description": "Helper tools for writing Unity documentation.",
   "dependencies": {
-    "https://github.com/GlitchEnzo/NuGetForUnity.git?path=/src/NuGetForUnity": "4.5.0"
+    "com.glitchenzo.nugetforunity": "4.5.0"
   },
   "author": {
     "name": "TheGreenSprout",
