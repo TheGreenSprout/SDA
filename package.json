@@ -3,9 +3,6 @@
   "version": "3.4.3",
   "displayName": "Sprouts.DA",
   "description": "Helper tools for writing Unity documentation.",
-  "dependencies": {
-    "com.glitchenzo.nugetforunity": "1.0.0"
-  },
   "author": {
     "name": "TheGreenSprout",
     "email": "sprouting.games@gmail.com",
