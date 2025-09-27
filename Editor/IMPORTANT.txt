@@ -1,2 +1,4 @@
 - Would be nice to have a way to add references in the XML (i think it was check or something, you can put a link to a different script).
-- Make excluded paths toggle a saved editor preference.
+- Make the excluded paths' toggle a saved editor preference.
+
++ Fix: Allow the parsing and injection of subclasses and submethods (classes within classes, and methods within subclasses).

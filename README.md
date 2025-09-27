@@ -35,8 +35,8 @@ Enjoy :D
 
 
 
-### + Current Version: 3.4.3
-### - Update Date: 13-08-2025
+### + Current Version: 3.5.0
+### - Update Date: 25-09-2025
 ### - Creation Date: 09-05-2025
 
 

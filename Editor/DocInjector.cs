@@ -8,119 +8,141 @@ This code was written with the assistance of AI.
 
 using System.Collections.Generic;
 using System.IO;
-using System.Text.RegularExpressions;
+using System.Linq;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 public static class DocInjector
 {
-    public static void InjectToFile(string filePath, List<ClassInfo> classes, List<EnumInfo> enums, List<StructInfo> structs, List<InterfaceInfo> interfaces)
+    public static void InjectToFile(
+        string filePath,
+        List<ClassInfo> classes,
+        List<EnumInfo> enums,
+        List<StructInfo> structs,
+        List<InterfaceInfo> interfaces)
     {
         var original = File.ReadAllLines(filePath);
         var lines = RemoveExistingXmlDocs(original);
+
         var injects = new List<(int idx, List<string> xml)>();
 
-        var methodLineMap = new Dictionary<string, Dictionary<string, int>>();
-        string currentTypeName = null;
+        // Parse file with Roslyn
+        var tree = CSharpSyntaxTree.ParseText(string.Join("\n", lines));
+        var root = tree.GetCompilationUnitRoot();
 
-        for (int i = 0; i < lines.Count; i++)
-        {
-            string line = lines[i];
+        // Helper: find line number from syntax node
+        int GetLine(SyntaxNode node) =>
+            node.GetLocation().GetLineSpan().StartLinePosition.Line;
 
-            // Track current class/struct/interface name
-            if (Regex.IsMatch(line, @"\bclass\b"))
-                currentTypeName = ExtractName(line, "class");
-            else if (Regex.IsMatch(line, @"\bstruct\b"))
-                currentTypeName = ExtractName(line, "struct");
-            else if (Regex.IsMatch(line, @"\binterface\b"))
-                currentTypeName = ExtractName(line, "interface");
-
-            var match = Regex.Match(line,
-                @"^\s*(?:public|protected|internal|private)?\s*(?:static\s+|async\s+|virtual\s+|override\s+|sealed\s+|new\s+)*" +
-                @"(?<rtype>[\w\<\>\[\]\.]+)\s+" +
-                @"(?<name>\w+)\s*\((?<params>[^\)]*)\)\s*(\{|where|\n)?");
-
-            if (match.Success && !string.IsNullOrWhiteSpace(currentTypeName))
-            {
-                string name = match.Groups["name"].Value;
-                string rtype = match.Groups["rtype"].Value;
-                string plist = match.Groups["params"].Value;
-
-                string signature = GenerateSignature(name, plist, rtype);
-
-                if (!methodLineMap.ContainsKey(currentTypeName))
-                    methodLineMap[currentTypeName] = new Dictionary<string, int>();
-
-                methodLineMap[currentTypeName][signature] = i;
-            }
-        }
-
+        // ---- Classes ----
         foreach (var c in classes)
         {
-            int idx = FindLineIndex(lines, $"class {c.Name}");
-            if (idx >= 0)
+            var classDecl = root.DescendantNodes()
+                .OfType<ClassDeclarationSyntax>()
+                .FirstOrDefault(cd => cd.Identifier.Text == c.Name);
+
+            if (classDecl != null)
             {
+                int idx = GetLine(classDecl);
                 injects.Add((idx, GenerateClassXml(c.Summary, GetIndentation(lines[idx]))));
+
                 foreach (var m in c.Methods)
                 {
-                    if (methodLineMap.TryGetValue(c.Name, out var map) &&
-                        map.TryGetValue(m.UniqueSignature, out int lineIdx))
+                    var methodDecl = classDecl.Members
+                        .OfType<MethodDeclarationSyntax>()
+                        .FirstOrDefault(md => MatchesSignature(md, m));
+
+                    if (methodDecl != null)
                     {
-                        injects.Add((lineIdx, GenerateMethodXml(m, GetIndentation(lines[lineIdx]), m)));
+                        int midx = GetLine(methodDecl);
+                        injects.Add((midx, GenerateMethodXml(m, GetIndentation(lines[midx]), m)));
                     }
                 }
             }
         }
 
+        // ---- Structs ----
         foreach (var s in structs)
         {
-            int idx = FindLineIndex(lines, $"struct {s.Name}");
-            if (idx >= 0)
+            var structDecl = root.DescendantNodes()
+                .OfType<StructDeclarationSyntax>()
+                .FirstOrDefault(sd => sd.Identifier.Text == s.Name);
+
+            if (structDecl != null)
             {
+                int idx = GetLine(structDecl);
                 injects.Add((idx, GenerateClassXml(s.Summary, GetIndentation(lines[idx]))));
+
                 foreach (var m in s.Methods)
                 {
-                    if (methodLineMap.TryGetValue(s.Name, out var map) &&
-                        map.TryGetValue(m.UniqueSignature, out int lineIdx))
+                    var methodDecl = structDecl.Members
+                        .OfType<MethodDeclarationSyntax>()
+                        .FirstOrDefault(md => MatchesSignature(md, m));
+
+                    if (methodDecl != null)
                     {
-                        injects.Add((lineIdx, GenerateMethodXml(m, GetIndentation(lines[lineIdx]), m)));
+                        int midx = GetLine(methodDecl);
+                        injects.Add((midx, GenerateMethodXml(m, GetIndentation(lines[midx]), m)));
                     }
                 }
             }
         }
 
+        // ---- Interfaces ----
         foreach (var i in interfaces)
         {
-            int idx = FindLineIndex(lines, $"interface {i.Name}");
-            if (idx >= 0)
+            var ifaceDecl = root.DescendantNodes()
+                .OfType<InterfaceDeclarationSyntax>()
+                .FirstOrDefault(id => id.Identifier.Text == i.Name);
+
+            if (ifaceDecl != null)
             {
+                int idx = GetLine(ifaceDecl);
                 injects.Add((idx, GenerateClassXml(i.Summary, GetIndentation(lines[idx]))));
+
                 foreach (var m in i.Methods)
                 {
-                    if (methodLineMap.TryGetValue(i.Name, out var map) &&
-                        map.TryGetValue(m.UniqueSignature, out int lineIdx))
+                    var methodDecl = ifaceDecl.Members
+                        .OfType<MethodDeclarationSyntax>()
+                        .FirstOrDefault(md => MatchesSignature(md, m));
+
+                    if (methodDecl != null)
                     {
-                        injects.Add((lineIdx, GenerateMethodXml(m, GetIndentation(lines[lineIdx]), m)));
+                        int midx = GetLine(methodDecl);
+                        injects.Add((midx, GenerateMethodXml(m, GetIndentation(lines[midx]), m)));
                     }
                 }
             }
         }
 
+        // ---- Enums ----
         foreach (var e in enums)
         {
-            int idx = FindLineIndex(lines, $"enum {e.Name}");
-            if (idx >= 0)
+            var enumDecl = root.DescendantNodes()
+                .OfType<EnumDeclarationSyntax>()
+                .FirstOrDefault(ed => ed.Identifier.Text == e.Name);
+
+            if (enumDecl != null)
             {
+                int idx = GetLine(enumDecl);
                 injects.Add((idx, GenerateEnumXml(e.Summary, GetIndentation(lines[idx]))));
-                foreach (var m in e.Members)
+
+                foreach (var member in e.Members)
                 {
-                    int midx = FindLineIndex(lines, m.Name, idx);
-                    if (midx >= 0)
+                    var enumMember = enumDecl.Members
+                        .FirstOrDefault(em => em.Identifier.Text == member.Name);
+
+                    if (enumMember != null)
                     {
-                        injects.Add((midx, GenerateEnumMemberXml(m.Summary, GetIndentation(lines[midx]))));
+                        int midx = GetLine(enumMember);
+                        injects.Add((midx, GenerateEnumMemberXml(member.Summary, GetIndentation(lines[midx]))));
                     }
                 }
             }
         }
 
+        // ---- Apply injects ----
         injects.Sort((a, b) => a.idx.CompareTo(b.idx));
         int offset = 0;
         foreach (var (idx, xml) in injects)
@@ -132,22 +154,30 @@ public static class DocInjector
         File.WriteAllLines(filePath, lines);
     }
 
-    private static string ExtractName(string line, string type)
+    private static bool MatchesSignature(MethodDeclarationSyntax md, MethodInfo info)
     {
-        var m = Regex.Match(line, $@"\b{type}\s+(\w+)");
-        return m.Success ? m.Groups[1].Value : null;
-    }
+        // Compare name first
+        if (md.Identifier.Text != info.Name) return false;
 
-    private static string GenerateSignature(string name, string plist, string returnType)
-    {
-        var types = new List<string>();
-        foreach (var part in plist.Split(','))
+        // Compare parameter types count & names
+        var methodParams = md.ParameterList.Parameters
+            .Select(p => p.Type?.ToString().Trim())
+            .ToList();
+
+        var infoParams = info.Parameters
+            .Select(p => p.Type.Trim())
+            .ToList();
+
+        if (methodParams.Count != infoParams.Count) return false;
+
+        for (int i = 0; i < methodParams.Count; i++)
         {
-            var bits = part.Trim().Split(' ');
-            if (bits.Length >= 2)
-                types.Add(string.Join(" ", bits, 0, bits.Length - 1));
+            if (methodParams[i] != infoParams[i]) return false;
         }
-        return $"{name}({string.Join(",", types)}) : {returnType}";
+
+        // Compare return type
+        var returnType = md.ReturnType.ToString().Trim();
+        return returnType == info.ReturnType.Trim();
     }
 
     private static List<string> RemoveExistingXmlDocs(string[] lines)
@@ -162,15 +192,6 @@ public static class DocInjector
             if (!inside) outL.Add(l);
         }
         return outL;
-    }
-
-    private static int FindLineIndex(List<string> lines, string keyword, int startAt = 0)
-    {
-        for (int i = startAt; i < lines.Count; i++)
-        {
-            if (lines[i].Contains(keyword)) return i;
-        }
-        return -1;
     }
 
     private static string GetIndentation(string line)
