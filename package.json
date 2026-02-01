@@ -3,6 +3,9 @@
   "version": "3.5.0",
   "displayName": "Sprouts.DA",
   "description": "Helper tools for writing Unity documentation.",
+  "dependencies": {
+    "com.sproutinggames.sprouts.etb": "1.4.1"
+  },
   "author": {
     "name": "TheGreenSprout",
     "email": "sprouting.games@gmail.com",
